@@ -1,0 +1,3 @@
+- Error starts with where the error is happening. ex: if its in the cache, it starts with a CA code, the third letter decides what type of system it is. is it related to application, specific system, database,
+- the three numbers and one letters after code are there to give option for expansion
+- The Last letter indicates what is coming after the code, is Name,Digit, ID, or any other type of record that could help clarify the Object related to the code   

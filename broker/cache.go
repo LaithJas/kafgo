@@ -24,12 +24,18 @@ type message struct {
 	ackedAt    time.Time
 }
 
+func newCache() *cache {
+	return &cache{
+		storage: make(map[string]*list.List),
+	}
+}
+
 func (c *cache) store(topic string, msg *message) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	_, ok := c.storage[topic]
 	if !ok {
-		return fmt.Errorf("topic %s does not exist", topic)
+		return fmt.Errorf("CAS0001AN_%s", topic)
 	}
 	c.storage[topic].PushBack(msg)
 	c.receivedMsgs++
@@ -41,7 +47,7 @@ func (c *cache) create(topic string) error {
 	defer c.mu.Unlock()
 	_, ok := c.storage[topic]
 	if ok {
-		return fmt.Errorf("topic %s already exist", topic)
+		return fmt.Errorf("CAS002AN_%s", topic)
 	}
 	c.storage[topic] = list.New()
 
@@ -49,25 +55,45 @@ func (c *cache) create(topic string) error {
 }
 
 func (c *cache) retrieve(topic string) (*message, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 
 	_, ok := c.storage[topic]
 	if !ok {
-		return nil, fmt.Errorf("topic %s does not exist", topic)
+		return nil, fmt.Errorf("CAS001AN_%s", topic)
 	}
 	element := c.storage[topic].Front()
 	if element == nil {
-		return nil, fmt.Errorf("no messages in %s topic", topic)
+		return nil, fmt.Errorf("CAS003AN_%s", topic)
 	}
 	data, ok := element.Value.(*message)
 	if !ok {
-		return nil, fmt.Errorf("list element is not of type message")
+		return nil, fmt.Errorf("CAS004AM")
 	}
 
 	return data, nil
 }
 
-func ack(topic string, id uuid.UUID) error {
-	return nil
+func (c *cache) ack(topic string, id uuid.UUID) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	_, ok := c.storage[topic]
+	if !ok {
+		return fmt.Errorf("CAS001AN_%s", topic)
+	}
+	// find the element with UUID == id
+	for e := c.storage[topic].Front(); e != nil; e = e.Next() {
+		data, ok := e.Value.(*message)
+		if !ok {
+			return fmt.Errorf("CAS004AM")
+		}
+		if data.id == id {
+			data.ackedAt = time.Now()
+			c.storage[topic].Remove(e)
+			c.ackedMsgs++
+			return nil
+		}
+	}
+	return fmt.Errorf("CAS005AM")
 }
