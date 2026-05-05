@@ -1,8 +1,21 @@
+// Package broker is used to crate a message queue broker and provde
+// services to producers and consuumbers to use that broker
 package broker
 
 import (
-	"net/http"
+	"github.com/laithjas/kafgo/proto"
 )
+
+type broker struct {
+	proto.UnimplementedBrokerServiceServer
+	cache *cache
+}
+
+func NewBroker() *broker {
+	return &broker{
+		cache: newCache(),
+	}
+}
 
 // first open a service that cosumers can connect to send their data
 // service should be concurrent and can handle multiple requests

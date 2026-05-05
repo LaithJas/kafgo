@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package broker;
+
+option go_package = "github.com/laithjas/kafgo/proto";
+
+service BrokerService {
+  rpc CreateTopic (CreateTopicRequest) returns (CreateTopicResponse);
+  rpc SubscribeTopic (SubscribeTopicRequest) returns (SubscribeTopicResponse);
+  rpc AckMessage (AckMsgRequets) returns (AckMsgResponse);
+  rpc SetPublishData (stream PublishMsgsData) returns (PublishMsgsResponse);
+  rpc SetConsumerData (ConsumeMsgsRequest) returns (stream ConsumeMsgsData);
+}
+
+
+message CreateTopicRequest {
+  string topic = 1;
+}
+
+message CreateTopicResponse {
+  string topic = 1;
+  string status_code = 2; 
+  bool success = 3;
+}
+
+message SubscribeTopicRequest {
+  string topic = 1;
+}
+
+message SubscribeTopicResponse {
+  string topic = 1;
+  string status_code= 2;
+}
+
+message AckMsgRequets {
+  string id = 1;
+}
+
+message AckMsgResponse {
+  string id = 1;
+  bool success = 2;
+}
+
+message PublishMsgsData {
+  string topic = 1;
+  bytes data = 2;
+}
+
+message PublishMsgsResponse {
+  string topic = 1;
+  bool success = 2;
+}
+
+message ConsumeMsgsRequest {
+  string topic = 1;
+}
+
+message ConsumeMsgsData {
+  string topic = 1;
+  bytes data = 2;
+  string id = 3;
+}
