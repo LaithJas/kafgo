@@ -33,7 +33,8 @@ message SubscribeTopicResponse {
 }
 
 message AckMsgRequets {
-  string id = 1;
+  string topic = 1;
+  string id = 2; 
 }
 
 message AckMsgResponse {

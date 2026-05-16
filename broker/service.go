@@ -4,12 +4,14 @@ package broker
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"log"
 	"net"
 
+	"github.com/google/uuid"
 	"github.com/laithjas/kafgo/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/peer"
 )
 
 type broker struct {
@@ -23,7 +25,12 @@ func NewBroker() *broker {
 	}
 }
 
-// starts a grpc server that will serve using a TCP conneection
+// Start starts a grpc server that will serve using a TCP conneection
+// it will return an error if tcp socket is not created or if
+// connection faild
+// it creates a tcp socket that Listen for all incomming connections
+// it creats a grpc server, and register that server to the socket
+// it will handle all incomming connections using go routines and channels
 func (b *broker) Start(ctx context.Context) error {
 	ln, err := net.Listen("tcp", ":8080")
 	if err != nil {
@@ -48,6 +55,9 @@ func (b *broker) Start(ctx context.Context) error {
 	}
 }
 
+// CreateTopic uses the protobuff interfaces to create a new topic
+// in the broker instance
+// it returns a response struct and error if create method faild
 func (b *broker) CreateTopic(ctx context.Context, request *proto.CreateTopicRequest) (*proto.CreateTopicResponse, error) {
 	response := proto.CreateTopicResponse{}
 	err := b.cache.create(request.Topic)
@@ -59,6 +69,49 @@ func (b *broker) CreateTopic(ctx context.Context, request *proto.CreateTopicRequ
 	response.Success = true
 	response.StatusCode = "OK"
 	response.Topic = request.Topic
+
+	return &response, nil
+}
+
+// SubscribeTopic uses the protobuff interfaces to subsribe to a topic
+// in the broker instance
+// it returns a response struct and error if subsribe method faild
+// or if context doesn't contain data
+func (b *broker) SubscribeTopic(ctx context.Context, request *proto.SubscribeTopicRequest) (*proto.SubscribeTopicResponse, error) {
+	response := proto.SubscribeTopicResponse{}
+	p, ok := peer.FromContext(ctx)
+	if !ok {
+		response.StatusCode = "CAS007AM"
+		return &response, errors.New(response.StatusCode)
+	}
+	err := b.cache.subscribe(request.Topic, p.Addr.String())
+	if err != nil {
+		response.StatusCode = "CAS001AN"
+		return &response, err
+	}
+	response.StatusCode = "SUC001AN_" + p.Addr.String()
+	response.Topic = request.Topic
+
+	return &response, nil
+}
+
+// AckMessage acknowledge the message that are consumed by consumers
+// it will return a AckMsgResponse struct and an error if the
+// message is not acked
+func (b *broker) AckMessage(ctx context.Context, request *proto.AckMsgRequets) (*proto.AckMsgResponse, error) {
+	response := proto.AckMsgResponse{}
+	parsed, err := uuid.Parse(request.Id)
+	if err != nil {
+		response.Success = false
+		return &response, err
+	}
+	err = b.cache.ack(request.Topic, parsed)
+	if err != nil {
+		response.Success = false
+		return &response, err
+	}
+	response.Success = true
+	response.Id = request.Id
 
 	return &response, nil
 }

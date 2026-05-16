@@ -7,12 +7,11 @@
 package proto
 
 import (
+	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
+	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
-
-	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
-	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 )
 
 const (
@@ -224,7 +223,8 @@ func (x *SubscribeTopicResponse) GetStatusCode() string {
 
 type AckMsgRequets struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Topic         string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -257,6 +257,13 @@ func (x *AckMsgRequets) ProtoReflect() protoreflect.Message {
 // Deprecated: Use AckMsgRequets.ProtoReflect.Descriptor instead.
 func (*AckMsgRequets) Descriptor() ([]byte, []int) {
 	return file_proto_mq_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *AckMsgRequets) GetTopic() string {
+	if x != nil {
+		return x.Topic
+	}
+	return ""
 }
 
 func (x *AckMsgRequets) GetId() string {
@@ -543,9 +550,10 @@ const file_proto_mq_proto_rawDesc = "" +
 	"\x16SubscribeTopicResponse\x12\x14\n" +
 	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x1f\n" +
 	"\vstatus_code\x18\x02 \x01(\tR\n" +
-	"statusCode\"\x1f\n" +
-	"\rAckMsgRequets\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\":\n" +
+	"statusCode\"5\n" +
+	"\rAckMsgRequets\x12\x14\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\":\n" +
 	"\x0eAckMsgResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\";\n" +
@@ -581,21 +589,19 @@ func file_proto_mq_proto_rawDescGZIP() []byte {
 	return file_proto_mq_proto_rawDescData
 }
 
-var (
-	file_proto_mq_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
-	file_proto_mq_proto_goTypes  = []any{
-		(*CreateTopicRequest)(nil),     // 0: broker.CreateTopicRequest
-		(*CreateTopicResponse)(nil),    // 1: broker.CreateTopicResponse
-		(*SubscribeTopicRequest)(nil),  // 2: broker.SubscribeTopicRequest
-		(*SubscribeTopicResponse)(nil), // 3: broker.SubscribeTopicResponse
-		(*AckMsgRequets)(nil),          // 4: broker.AckMsgRequets
-		(*AckMsgResponse)(nil),         // 5: broker.AckMsgResponse
-		(*PublishMsgsData)(nil),        // 6: broker.PublishMsgsData
-		(*PublishMsgsResponse)(nil),    // 7: broker.PublishMsgsResponse
-		(*ConsumeMsgsRequest)(nil),     // 8: broker.ConsumeMsgsRequest
-		(*ConsumeMsgsData)(nil),        // 9: broker.ConsumeMsgsData
-	}
-)
+var file_proto_mq_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_proto_mq_proto_goTypes = []any{
+	(*CreateTopicRequest)(nil),     // 0: broker.CreateTopicRequest
+	(*CreateTopicResponse)(nil),    // 1: broker.CreateTopicResponse
+	(*SubscribeTopicRequest)(nil),  // 2: broker.SubscribeTopicRequest
+	(*SubscribeTopicResponse)(nil), // 3: broker.SubscribeTopicResponse
+	(*AckMsgRequets)(nil),          // 4: broker.AckMsgRequets
+	(*AckMsgResponse)(nil),         // 5: broker.AckMsgResponse
+	(*PublishMsgsData)(nil),        // 6: broker.PublishMsgsData
+	(*PublishMsgsResponse)(nil),    // 7: broker.PublishMsgsResponse
+	(*ConsumeMsgsRequest)(nil),     // 8: broker.ConsumeMsgsRequest
+	(*ConsumeMsgsData)(nil),        // 9: broker.ConsumeMsgsData
+}
 var file_proto_mq_proto_depIdxs = []int32{
 	0, // 0: broker.BrokerService.CreateTopic:input_type -> broker.CreateTopicRequest
 	2, // 1: broker.BrokerService.SubscribeTopic:input_type -> broker.SubscribeTopicRequest
