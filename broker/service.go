@@ -6,7 +6,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"net"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/laithjas/kafgo/proto"
@@ -16,12 +18,14 @@ import (
 
 type broker struct {
 	proto.UnimplementedBrokerServiceServer
-	cache *cache
+	cache  *cache
+	notify chan struct{}
 }
 
 func NewBroker() *broker {
 	return &broker{
-		cache: newCache(),
+		cache:  newCache(),
+		notify: make(chan struct{}, 1),
 	}
 }
 
@@ -116,18 +120,35 @@ func (b *broker) AckMessage(ctx context.Context, request *proto.AckMsgRequets) (
 	return &response, nil
 }
 
-// first open a service that cosumers can connect to send their data
-// service should be concurrent and can handle multiple requests
-//
-// for the queue data structre we're going to use the container/list package
-// for protecting the concuurent process we use sync.RWMutex
-// to generate universally unique IDs we use google/uuid
-// for Observability we'd need to track:
-// - total message recieived
-// - total message package
-// - current queue size per topic
-//
-//need multiple topics that are mapped in a map.
-// the cache sturct storage field would be a map where:
-// - topic name is the key
-// - value is the message list
+// SetPublishData It's the method producers call to send messages to the broker
+// It's a client streaming method — the producer streams multiple messages to the broker one by one
+// The broker receives each message, stores it in the cache, and when the producer is
+// done sends back a single response confirming success
+func (b *broker) SetPublishData(stream grpc.ClientStreamingServer[proto.PublishMsgsData, proto.PublishMsgsResponse]) error {
+	var tmpTopic string
+	for {
+		req, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		msg := message{}
+		msg.id = uuid.New()
+		msg.data = req.Data
+		msg.topic = req.Topic
+		msg.receivedAt = time.Now()
+		err = b.cache.store(msg.topic, &msg)
+		if err != nil {
+			return err
+		}
+		tmpTopic = msg.topic
+	}
+	res := &proto.PublishMsgsResponse{Topic: tmpTopic, Success: true}
+	err := stream.SendAndClose(res)
+	if err != nil {
+		return err
+	}
+	return nil
+}
