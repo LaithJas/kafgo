@@ -144,6 +144,10 @@ func (b *broker) SetPublishData(stream grpc.ClientStreamingServer[proto.PublishM
 			return err
 		}
 		tmpTopic = msg.topic
+		select {
+		case b.notify <- struct{}{}:
+		default:
+		}
 	}
 	res := &proto.PublishMsgsResponse{Topic: tmpTopic, Success: true}
 	err := stream.SendAndClose(res)
@@ -151,4 +155,34 @@ func (b *broker) SetPublishData(stream grpc.ClientStreamingServer[proto.PublishM
 		return err
 	}
 	return nil
+}
+
+// SetConsumerData is the method called by consumers to consume data
+// it's a server streaming method that takes one message and send a stream
+// of messages to the topic that it received
+func (b *broker) SetConsumerData(request *proto.ConsumeMsgsRequest, stream grpc.ServerStreamingServer[proto.ConsumeMsgsData]) error {
+	ctx := stream.Context()
+	for {
+		select {
+		case <-b.notify:
+			response := &proto.ConsumeMsgsData{}
+			msg, err := b.cache.retrieve(request.Topic)
+			if err != nil {
+				return err
+			}
+			response.Topic = request.Topic
+			data, ok := msg.data.([]byte)
+			if !ok {
+				return fmt.Errorf("CAS004AM")
+			}
+			response.Data = data
+			response.Id = msg.id.String()
+			err = stream.Send(response)
+			if err != nil {
+				return err
+			}
+		case <-ctx.Done():
+			return nil
+		}
+	}
 }
