@@ -25,6 +25,7 @@ message CreateTopicResponse {
 
 message SubscribeTopicRequest {
   string topic = 1;
+  string consumerId = 2;
 }
 
 message SubscribeTopicResponse {
@@ -35,6 +36,7 @@ message SubscribeTopicResponse {
 message AckMsgRequets {
   string topic = 1;
   string id = 2; 
+  string consumerId = 3;
 }
 
 message AckMsgResponse {
@@ -54,6 +56,7 @@ message PublishMsgsResponse {
 
 message ConsumeMsgsRequest {
   string topic = 1;
+  string id = 2;
 }
 
 message ConsumeMsgsData {

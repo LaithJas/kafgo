@@ -12,29 +12,33 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/laithjas/kafgo/consumer"
 )
 
 type cache struct {
-	storage      map[string]*list.List // each topic has a list of messages as topic: messages
-	subscribers  map[string][]string   // contains who subscribed to the borker as topic: []subscribers
+	storage      map[string]*list.List              // each topic has a list of messages as topic: messages
+	subscribers  map[string][]uuid.UUID             // contains who subscribed to the borker as topic: []subscribers
+	msgOffset    map[uuid.UUID]map[string]uuid.UUID // message offset for each consumer per topic
 	mu           sync.RWMutex
 	receivedMsgs int // number of received Msgs
 	ackedMsgs    int // number of acked messages
 }
 
 type message struct {
-	id         uuid.UUID
-	topic      string
-	data       any
-	receivedAt time.Time
-	ackedAt    time.Time
+	id             uuid.UUID
+	topic          string
+	data           any
+	receivedAt     time.Time
+	ackedAt        time.Time
+	ackedConsumers map[uuid.UUID]bool
 }
 
 // newCache initializes a new cache whenever called
 func newCache() *cache {
 	return &cache{
 		storage:     make(map[string]*list.List),
-		subscribers: make(map[string][]string),
+		subscribers: make(map[string][]uuid.UUID),
+		msgOffset:   make(map[uuid.UUID]map[string]uuid.UUID),
 	}
 }
 
@@ -42,7 +46,7 @@ func newCache() *cache {
 // subscribe that consumner to the topic
 // it will returns an error if topic doesn't exist
 // TODO: return an error if consumebr is alredy subscribed to the same topic
-func (c *cache) subscribe(topic, consumer string) error {
+func (c *cache) subscribe(topic string, consumer uuid.UUID) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	_, ok := c.storage[topic]
@@ -90,31 +94,57 @@ func (c *cache) create(topic string) error {
 // - topic doesn't exits
 // - message doesn't exits
 // - if the list element is not of type message
-func (c *cache) retrieve(topic string) (*message, error) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+func (c *cache) retrieve(topic string, consumerID uuid.UUID) (*message, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	_, ok := c.storage[topic]
 	if !ok {
 		return nil, fmt.Errorf("CAS001AN_%s", topic)
 	}
-	element := c.storage[topic].Front()
-	if element == nil {
-		return nil, fmt.Errorf("CAS003AN_%s", topic)
-	}
-	data, ok := element.Value.(*message)
-	if !ok {
-		return nil, fmt.Errorf("CAS004AM")
-	}
 
-	return data, nil
+	var msg *message
+
+	// if this is the first message being retrieved, then there's no offset yet. set it up
+	consumerMap, ok := c.msgOffset[consumerID] // returns a map that you can give a topic
+	if !ok {
+		tmpMsg, _ := c.storage[topic].Front().Value.(*message)
+		c.msgOffset[consumerID] = map[string]uuid.UUID{topic: tmpMsg.id}
+		return tmpMsg, nil
+	}
+	consumerOffsetMsgId, ok := consumerMap[topic] // returns the ID of a message
+	if !ok {
+		tmpMsg, _ := c.storage[topic].Front().Value.(*message)
+		consumerMap[topic] = tmpMsg.id
+		msg = tmpMsg
+	} else {
+		for e := c.storage[topic].Front(); e != nil; e = e.Next() {
+			topicMsg, _ := e.Value.(*message)
+			if consumerOffsetMsgId == topicMsg.id {
+				if e.Next() == nil {
+					return nil, fmt.Errorf("no message")
+				}
+				msg, ok = e.Next().Value.(*message)
+				if !ok {
+					return nil, fmt.Errorf("CAS004AM")
+				}
+				c.msgOffset[consumerID][topic] = msg.id
+			}
+		}
+		if msg == nil {
+			frontMsg, _ := c.storage[topic].Front().Value.(*message)
+			msg = frontMsg
+			c.msgOffset[consumerID][topic] = msg.id
+		}
+	}
+	return msg, nil
 }
 
 // ack takes a topic and message ID and acknowledge that the message
 // got received by the consumer and ready to be dropped from the queue
 // it will return an error if topic doesn't exists
 // or if the list emeent is not of type message
-func (c *cache) ack(topic string, id uuid.UUID) error {
+func (c *cache) ack(topic string, id, consumerID uuid.UUID) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -124,12 +154,18 @@ func (c *cache) ack(topic string, id uuid.UUID) error {
 	}
 	// find the element with UUID == id
 	for e := c.storage[topic].Front(); e != nil; e = e.Next() {
-		data, ok := e.Value.(*message)
+		msg, ok := e.Value.(*message)
 		if !ok {
 			return fmt.Errorf("CAS004AM")
 		}
-		if data.id == id {
-			data.ackedAt = time.Now()
+		if msg.id == id {
+			msg.ackedAt = time.Now()
+			msg.ackedConsumers[consumerID] = true
+			for _, cons := range c.subscribers[topic] {
+				if !msg.ackedConsumers[cons] {
+					return nil
+				}
+			}
 			c.storage[topic].Remove(e)
 			c.ackedMsgs++
 			return nil
@@ -137,3 +173,9 @@ func (c *cache) ack(topic string, id uuid.UUID) error {
 	}
 	return fmt.Errorf("CAS005AM")
 }
+
+// I have a stroage map with 			topic : list of message
+// and I havea subscribers mpa with 	topic : list of subscribers
+//
+//we need to track subscribers and make sure all subscribers for a given topic
+//has acked a message before we Remove(e)

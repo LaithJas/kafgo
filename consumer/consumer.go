@@ -40,7 +40,10 @@ func NewConsumer(ip string) (*Consumer, error) {
 // and then acks the messages
 // returns err if anything fails
 func (c *Consumer) Consume(ctx context.Context, topic string, handler func(cm *proto.ConsumeMsgsData) error) error {
-	subTopicReq := &proto.SubscribeTopicRequest{Topic: topic}
+	subTopicReq := &proto.SubscribeTopicRequest{
+		Topic:      topic,
+		ConsumerId: c.consumerID.String(),
+	}
 	sub, err := c.sc.SubscribeTopic(ctx, subTopicReq)
 	if err != nil {
 		return err
@@ -52,7 +55,10 @@ func (c *Consumer) Consume(ctx context.Context, topic string, handler func(cm *p
 		return err
 	}
 	for {
-		ackMsgReq := &proto.AckMsgRequets{Topic: sub.Topic}
+		ackMsgReq := &proto.AckMsgRequets{
+			Topic:      sub.Topic,
+			ConsumerId: c.consumerID.String(),
+		}
 		msg, err := stream.Recv()
 		if err == io.EOF {
 			break

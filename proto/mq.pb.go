@@ -128,6 +128,7 @@ func (x *CreateTopicResponse) GetSuccess() bool {
 type SubscribeTopicRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Topic         string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	ConsumerId    string                 `protobuf:"bytes,2,opt,name=consumerId,proto3" json:"consumerId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -165,6 +166,13 @@ func (*SubscribeTopicRequest) Descriptor() ([]byte, []int) {
 func (x *SubscribeTopicRequest) GetTopic() string {
 	if x != nil {
 		return x.Topic
+	}
+	return ""
+}
+
+func (x *SubscribeTopicRequest) GetConsumerId() string {
+	if x != nil {
+		return x.ConsumerId
 	}
 	return ""
 }
@@ -225,6 +233,7 @@ type AckMsgRequets struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Topic         string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
 	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
+	ConsumerId    string                 `protobuf:"bytes,3,opt,name=consumerId,proto3" json:"consumerId,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -269,6 +278,13 @@ func (x *AckMsgRequets) GetTopic() string {
 func (x *AckMsgRequets) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+func (x *AckMsgRequets) GetConsumerId() string {
+	if x != nil {
+		return x.ConsumerId
 	}
 	return ""
 }
@@ -432,6 +448,7 @@ func (x *PublishMsgsResponse) GetSuccess() bool {
 type ConsumeMsgsRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Topic         string                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	Id            string                 `protobuf:"bytes,2,opt,name=id,proto3" json:"id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -469,6 +486,13 @@ func (*ConsumeMsgsRequest) Descriptor() ([]byte, []int) {
 func (x *ConsumeMsgsRequest) GetTopic() string {
 	if x != nil {
 		return x.Topic
+	}
+	return ""
+}
+
+func (x *ConsumeMsgsRequest) GetId() string {
+	if x != nil {
+		return x.Id
 	}
 	return ""
 }
@@ -544,16 +568,22 @@ const file_proto_mq_proto_rawDesc = "" +
 	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x1f\n" +
 	"\vstatus_code\x18\x02 \x01(\tR\n" +
 	"statusCode\x12\x18\n" +
-	"\asuccess\x18\x03 \x01(\bR\asuccess\"-\n" +
+	"\asuccess\x18\x03 \x01(\bR\asuccess\"M\n" +
 	"\x15SubscribeTopicRequest\x12\x14\n" +
-	"\x05topic\x18\x01 \x01(\tR\x05topic\"O\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x1e\n" +
+	"\n" +
+	"consumerId\x18\x02 \x01(\tR\n" +
+	"consumerId\"O\n" +
 	"\x16SubscribeTopicResponse\x12\x14\n" +
 	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x1f\n" +
 	"\vstatus_code\x18\x02 \x01(\tR\n" +
-	"statusCode\"5\n" +
+	"statusCode\"U\n" +
 	"\rAckMsgRequets\x12\x14\n" +
 	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x0e\n" +
-	"\x02id\x18\x02 \x01(\tR\x02id\":\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\x12\x1e\n" +
+	"\n" +
+	"consumerId\x18\x03 \x01(\tR\n" +
+	"consumerId\":\n" +
 	"\x0eAckMsgResponse\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x18\n" +
 	"\asuccess\x18\x02 \x01(\bR\asuccess\";\n" +
@@ -562,9 +592,10 @@ const file_proto_mq_proto_rawDesc = "" +
 	"\x04data\x18\x02 \x01(\fR\x04data\"E\n" +
 	"\x13PublishMsgsResponse\x12\x14\n" +
 	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x18\n" +
-	"\asuccess\x18\x02 \x01(\bR\asuccess\"*\n" +
+	"\asuccess\x18\x02 \x01(\bR\asuccess\":\n" +
 	"\x12ConsumeMsgsRequest\x12\x14\n" +
-	"\x05topic\x18\x01 \x01(\tR\x05topic\"K\n" +
+	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x0e\n" +
+	"\x02id\x18\x02 \x01(\tR\x02id\"K\n" +
 	"\x0fConsumeMsgsData\x12\x14\n" +
 	"\x05topic\x18\x01 \x01(\tR\x05topic\x12\x12\n" +
 	"\x04data\x18\x02 \x01(\fR\x04data\x12\x0e\n" +

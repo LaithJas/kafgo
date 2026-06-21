@@ -88,7 +88,11 @@ func (b *broker) SubscribeTopic(ctx context.Context, request *proto.SubscribeTop
 		response.StatusCode = "CAS007AM"
 		return &response, errors.New(response.StatusCode)
 	}
-	err := b.cache.subscribe(request.Topic, p.Addr.String())
+	id, err := uuid.Parse(request.ConsumerId)
+	if err != nil {
+		return nil, err
+	}
+	err = b.cache.subscribe(request.Topic, id)
 	if err != nil {
 		response.StatusCode = "CAS001AN"
 		return &response, err
@@ -109,7 +113,12 @@ func (b *broker) AckMessage(ctx context.Context, request *proto.AckMsgRequets) (
 		response.Success = false
 		return &response, err
 	}
-	err = b.cache.ack(request.Topic, parsed)
+
+	id, err := uuid.Parse(request.ConsumerId)
+	if err != nil {
+		return nil, err
+	}
+	err = b.cache.ack(request.Topic, parsed, id)
 	if err != nil {
 		response.Success = false
 		return &response, err
@@ -135,6 +144,7 @@ func (b *broker) SetPublishData(stream grpc.ClientStreamingServer[proto.PublishM
 			return err
 		}
 		msg := message{}
+		msg.ackedConsumers = make(map[uuid.UUID]bool)
 		msg.id = uuid.New()
 		msg.data = req.Data
 		msg.topic = req.Topic
@@ -166,7 +176,11 @@ func (b *broker) SetConsumerData(request *proto.ConsumeMsgsRequest, stream grpc.
 		select {
 		case <-b.notify:
 			response := &proto.ConsumeMsgsData{}
-			msg, err := b.cache.retrieve(request.Topic)
+			id, err := uuid.Parse(request.Id)
+			if err != nil {
+				return err
+			}
+			msg, err := b.cache.retrieve(request.Topic, id)
 			if err != nil {
 				return err
 			}
